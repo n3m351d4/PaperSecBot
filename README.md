@@ -1,7 +1,6 @@
 # PaperSecBot
 Бот, который вам поможет писать отчет по пентостику
 
-````markdown
 # PaperSecBot
 
 **PaperSecBot** — минималистичный Telegram-бот на Go, который помогает пентестерам
