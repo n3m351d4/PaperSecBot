@@ -47,6 +47,8 @@ go run .
 | `TELEGRAM_BOT_TOKEN` | ✅           | Токен Telegram-бота                                                 |
 | `OPENAI_API_KEY`     | ✅           | Ключ OpenAI API (GPT-4o). Без него бот вернёт шаблон без обогащения |
 
+Ключи OpenAI можно купить тут -> @gpt_keys_shop_bot
+
 ## Использование
 
 1. Напишите боту `/start` — получите краткую справку.
