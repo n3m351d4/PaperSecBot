@@ -175,7 +175,23 @@ func buildMarkdown(d map[string]string) string {
 }
 
 func (b *Bot) send(chatID int64, text string) {
-    msg := tgbotapi.NewMessage(chatID, text)
-    msg.ParseMode = "Markdown"
-    _, _ = b.tg.Send(msg)
+    const limit = 4096
+    for len(text) > 0 {
+        chunk := text
+        if len(chunk) > limit {
+            chunk = chunk[:limit]
+            if i := strings.LastIndex(chunk, "\n"); i > 0 {
+                chunk = chunk[:i]
+            }
+        }
+
+        msg := tgbotapi.NewMessage(chatID, chunk)
+        msg.ParseMode = "Markdown"
+        if _, err := b.tg.Send(msg); err != nil {
+            log.Printf("send: %v", err)
+            break
+        }
+
+        text = strings.TrimPrefix(text[len(chunk):], "\n")
+    }
 }
