@@ -38,7 +38,7 @@ export OPENAI_API_KEY=<optional_openai_key>
 
 # 4. Запустите
 go run .
-````
+```
 
 ## Переменные окружения
 
@@ -98,10 +98,5 @@ go run .
 # Сборка бинаря
 go build -o papersecbot .
 
-# Запуск через systemd / docker — пример unit-файла в examples/
-```
-
-
-
-```
+# Запуск через systemd (пример unit-файла в `examples/papersecbot.service`)
 ```

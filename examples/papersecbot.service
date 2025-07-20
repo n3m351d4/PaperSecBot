@@ -1,0 +1,13 @@
+[Unit]
+Description=PaperSecBot Telegram bot
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/papersecbot
+WorkingDirectory=/opt/papersecbot
+EnvironmentFile=/etc/default/papersecbot
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
