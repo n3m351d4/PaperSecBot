@@ -102,5 +102,4 @@ go run .
 # Сборка бинаря
 go build -o papersecbot .
 
-# Запуск через systemd / docker — пример unit-файла в examples/
-```
+
