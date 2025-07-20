@@ -27,6 +27,8 @@ type Bot struct {
     mu      sync.Mutex
 }
 
+// main initializes the Telegram client, optional OpenAI client and starts
+// processing incoming updates.
 func main() {
     token := os.Getenv("TELEGRAM_BOT_TOKEN")
     if token == "" {
@@ -57,6 +59,8 @@ func main() {
     }
 }
 
+// handleCmd reacts to bot commands such as /start and /bug,
+// updating the state of pending descriptions and sending help messages.
 func (b *Bot) handleCmd(m *tgbotapi.Message) {
     switch m.Command() {
     case "start":
@@ -71,6 +75,9 @@ func (b *Bot) handleCmd(m *tgbotapi.Message) {
     }
 }
 
+// handleText processes a plain text message that should contain
+// a vulnerability description. If the user hasn't issued /bug it
+// reminds them to do so, otherwise it extracts fields and responds.
 func (b *Bot) handleText(m *tgbotapi.Message) {
     b.mu.Lock()
     waiting := b.pending[m.Chat.ID]
@@ -92,6 +99,9 @@ func (b *Bot) handleText(m *tgbotapi.Message) {
     b.send(m.Chat.ID, buildMarkdown(fields))
 }
 
+// extractFields builds a vulnerability field map from the provided description.
+// If an OpenAI client is configured it enriches the data using GPT, otherwise
+// it returns a basic template.
 func (b *Bot) extractFields(description string) (map[string]string, error) {
     asset := parseDomain(description)
     base := map[string]string{
@@ -144,6 +154,8 @@ func (b *Bot) extractFields(description string) (map[string]string, error) {
     return base, nil
 }
 
+// parseDomain extracts the host part of the first URL found in text.
+// It returns a dash if no URL is present or parsing fails.
 func parseDomain(text string) string {
     if m := urlRE.FindString(text); m != "" {
         if u, err := url.Parse(m); err == nil {
@@ -153,6 +165,8 @@ func parseDomain(text string) string {
     return "—"
 }
 
+// buildMarkdown renders the vulnerability data map into a markdown block
+// suitable for sending back to the Telegram chat.
 func buildMarkdown(d map[string]string) string {
     g := func(k string) string {
         if v, ok := d[k]; ok && v != "" {
@@ -174,6 +188,7 @@ func buildMarkdown(d map[string]string) string {
     return sb.String()
 }
 
+// send wraps the Telegram API call to deliver a markdown-formatted message.
 func (b *Bot) send(chatID int64, text string) {
     msg := tgbotapi.NewMessage(chatID, text)
     msg.ParseMode = "Markdown"
