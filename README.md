@@ -30,6 +30,7 @@ git clone https://github.com/n3m351d4/PaperSecBot
 cd PaperSecBot
 
 # 2. Инициализируйте go-модуль и подтяните зависимости
+go mod init papersecbot
 go mod tidy
 
 # 3. Установите переменные окружения
