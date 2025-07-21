@@ -13,12 +13,16 @@ import (
 )
 
 const (
-	startMessage   = "Привет! Используй /bug для начала работы."
-	bugPrompt      = "Пришлите краткое описание — адреса, суть бага, запросы из Burp и прочую информацию."
-	unknownCommand = "Неизвестная команда"
-	startBugFirst  = "Сначала /bug."
-	openaiTimeout  = "Время ожидания ответа от OpenAI истекло."
-	markdownMode   = "Markdown"
+	startMessage       = "Привет! Используй /bug для начала работы."
+	bugPrompt          = "Пришлите краткое описание — адреса, суть бага, запросы из Burp и прочую информацию."
+	unknownCommand     = "Неизвестная команда"
+	startBugFirst      = "Сначала /bug."
+	openaiTimeout      = "Время ожидания ответа от OpenAI истекло."
+	markdownMode       = "Markdown"
+	alreadyStartedMsg  = "Вы уже начали описание. Пришлите текст или /cancel."
+	canceledMsg        = "Отменено. Используйте /bug, чтобы начать заново."
+	noActiveRequestMsg = "Нет активного запроса."
+	openaiErrorPrefix  = "OpenAI error: "
 )
 
 // pendingChats tracks chats waiting for a bug description and is
@@ -92,16 +96,16 @@ func (b *Bot) HandleCmd(m *tgbotapi.Message) {
 		b.send(m.Chat.ID, startMessage)
 	case "bug":
 		if b.Pending.Has(m.Chat.ID) {
-			b.send(m.Chat.ID, "Вы уже начали описание. Пришлите текст или /cancel.")
+			b.send(m.Chat.ID, alreadyStartedMsg)
 			return
 		}
 		b.Pending.Add(m.Chat.ID)
 		b.send(m.Chat.ID, bugPrompt)
 	case "cancel":
 		if b.Pending.Cancel(m.Chat.ID) {
-			b.send(m.Chat.ID, "Отменено. Используйте /bug, чтобы начать заново.")
+			b.send(m.Chat.ID, canceledMsg)
 		} else {
-			b.send(m.Chat.ID, "Нет активного запроса.")
+			b.send(m.Chat.ID, noActiveRequestMsg)
 		}
 	default:
 		b.send(m.Chat.ID, unknownCommand)
@@ -130,7 +134,7 @@ func (b *Bot) HandleText(m *tgbotapi.Message) {
 		if errors.Is(err, context.DeadlineExceeded) || strings.Contains(err.Error(), "deadline") {
 			b.send(m.Chat.ID, openaiTimeout)
 		} else {
-			b.send(m.Chat.ID, "OpenAI error: "+err.Error())
+			b.send(m.Chat.ID, openaiErrorPrefix+err.Error())
 		}
 		return
 	}
