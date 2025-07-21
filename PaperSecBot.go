@@ -3,12 +3,15 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log"
 	"net/url"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	openai "github.com/sashabaranov/go-openai"
@@ -18,6 +21,8 @@ var (
 	codeBlockRE = regexp.MustCompile("(?s)```(?:json)?\\s*(.*?)```") // извлечение JSON
 	urlRE       = regexp.MustCompile(`https?://[\w.-]+`)             // первый URL
 )
+
+const defaultMaxTokens = 10000
 
 // Report описывает итоговую структуру отчёта
 type Report struct {
@@ -29,6 +34,18 @@ type Report struct {
 	ShortDesc       string
 	ScreenshotHints string
 	Remediation     string
+}
+
+// reportAI mirrors Report but allows numeric CVSSScore from OpenAI
+type reportAI struct {
+	Severity        string      `json:"Severity"`
+	Name            string      `json:"Name"`
+	CVSSScore       json.Number `json:"CVSSScore"`
+	CVSSVector      string      `json:"CVSSVector"`
+	Assets          string      `json:"Assets"`
+	ShortDesc       string      `json:"ShortDesc"`
+	ScreenshotHints string      `json:"ScreenshotHints"`
+	Remediation     string      `json:"Remediation"`
 }
 
 type Bot struct {
@@ -97,7 +114,11 @@ func (b *Bot) handleText(m *tgbotapi.Message) {
 
 	rep, err := b.extractFields(desc)
 	if err != nil {
-		b.send(m.Chat.ID, "OpenAI error: "+err.Error())
+		if errors.Is(err, context.DeadlineExceeded) || strings.Contains(err.Error(), "deadline") {
+			b.send(m.Chat.ID, "Время ожидания ответа от OpenAI истекло.")
+		} else {
+			b.send(m.Chat.ID, "OpenAI error: "+err.Error())
+		}
 		return
 	}
 	b.send(m.Chat.ID, buildMarkdown(rep))
@@ -120,19 +141,29 @@ func (b *Bot) extractFields(description string) (Report, error) {
 		return base, nil
 	}
 
+
 	ctx := context.Background()
 	systemPrompt := "Ты Russian security-аналитик. Верни строго JSON без пояснений, кодовых блоков и бэктиков. Если раздел отсутствует, оставь пустую строку. Ключи: Severity, Name, CVSSScore, CVSSVector, Assets, ShortDesc, ScreenshotHints, Remediation. Severity на английском. ShortDesc — техническое описание на русском с PoC и влиянием. ScreenshotHints — русские подсказки какие скриншоты/артефакты/POC приложить. Remediation — детальные шаги с ссылками PortSwigger, Nessus и Acunetix (рус)."
+
 	userPrompt := "Описание: " + description
 
 	model := os.Getenv("OPENAI_MODEL")
 	if model == "" {
 		model = openai.GPT4o
 	}
+
+	maxTokens := defaultMaxTokens
+	if v := os.Getenv("OPENAI_MAX_TOKENS"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			maxTokens = n
+		}
+	}
+
 	req := openai.ChatCompletionRequest{
 		Model:       model,
 		Messages:    []openai.ChatCompletionMessage{{Role: "system", Content: systemPrompt}, {Role: "user", Content: userPrompt}},
 		Temperature: 0.2,
-		MaxTokens:   10000,
+		MaxTokens:   maxTokens,
 	}
 
 	resp, err := b.oa.CreateChatCompletion(ctx, req)
@@ -145,8 +176,33 @@ func (b *Bot) extractFields(description string) (Report, error) {
 		raw = m[1]
 	}
 
-	if err := json.Unmarshal([]byte(raw), &base); err != nil {
+	var ai reportAI
+	if err := json.Unmarshal([]byte(raw), &ai); err != nil {
 		return base, err
+	}
+	if ai.Severity != "" {
+		base.Severity = ai.Severity
+	}
+	if ai.Name != "" {
+		base.Name = ai.Name
+	}
+	if s := ai.CVSSScore.String(); s != "" {
+		base.CVSSScore = s
+	}
+	if ai.CVSSVector != "" {
+		base.CVSSVector = ai.CVSSVector
+	}
+	if ai.Assets != "" {
+		base.Assets = ai.Assets
+	}
+	if ai.ShortDesc != "" {
+		base.ShortDesc = ai.ShortDesc
+	}
+	if ai.ScreenshotHints != "" {
+		base.ScreenshotHints = ai.ScreenshotHints
+	}
+	if ai.Remediation != "" {
+		base.Remediation = ai.Remediation
 	}
 	if base.Assets == "" {
 		base.Assets = asset
