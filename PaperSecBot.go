@@ -121,7 +121,7 @@ func (b *Bot) extractFields(description string) (Report, error) {
 	}
 
 	ctx := context.Background()
-	systemPrompt := "Ты Russian security-аналитик. Ответ JSON minified без бэктиков. Ключи: Severity, Name, CVSSScore, CVSSVector, Assets, ShortDesc, ScreenshotHints, Remediation. Severity на английском. ShortDesc — техническое описание на русском с PoC и влиянием. ScreenshotHints — русские подсказки какие скриншоты/артефакты/POC приложить. Remediation — детальные шаги с ссылками PortSwigger, Nessus и Acunetix (рус)."
+	systemPrompt := "Ты Russian security-аналитик. Верни строго JSON без пояснений, кодовых блоков и бэктиков. Если раздел отсутствует, оставь пустую строку. Ключи: Severity, Name, CVSSScore, CVSSVector, Assets, ShortDesc, ScreenshotHints, Remediation. Severity на английском. ShortDesc — техническое описание на русском с PoC и влиянием. ScreenshotHints — русские подсказки какие скриншоты/артефакты/POC приложить. Remediation — детальные шаги с ссылками PortSwigger, Nessus и Acunetix (рус)."
 	userPrompt := "Описание: " + description
 
 	model := os.Getenv("OPENAI_MODEL")
