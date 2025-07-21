@@ -32,10 +32,13 @@ func main() {
 		if u.Message == nil {
 			continue
 		}
-		if u.Message.IsCommand() {
-			bot.HandleCmd(u.Message)
-		} else {
-			bot.HandleText(u.Message)
-		}
+		upd := u
+		go func() {
+			if upd.Message.IsCommand() {
+				bot.HandleCmd(upd.Message)
+			} else {
+				bot.HandleText(upd.Message)
+			}
+		}()
 	}
 }
