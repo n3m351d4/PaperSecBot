@@ -35,6 +35,7 @@ go mod tidy
 export TELEGRAM_BOT_TOKEN=<bot_token>
 export OPENAI_API_KEY=<optional_openai_key>
 export OPENAI_MODEL=gpt-4o  # или gpt-4o-mini
+export OPENAI_MAX_TOKENS=10000  # опц. лимит токенов
 
 # 4. Запустите
 go run .
@@ -47,6 +48,7 @@ go run .
 | `TELEGRAM_BOT_TOKEN` | ✅ | Токен Telegram-бота |
 | `OPENAI_API_KEY` | ❌ | (опц.) Ключ OpenAI API (GPT-4o). Без него бот вернёт шаблон без обогащения |
 | `OPENAI_MODEL` | ❌ | (опц.) Имя модели OpenAI, например `gpt-4o` или `gpt-4o-mini` |
+| `OPENAI_MAX_TOKENS` | ❌ | (опц.) Максимальное число токенов в ответе |
 
 Ключи OpenAI можно купить тут -> @gpt_keys_shop_bot
 
