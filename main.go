@@ -7,6 +7,7 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	openai "github.com/sashabaranov/go-openai"
 
+	"papersecbot/internal/openaiutil"
 	"papersecbot/internal/telegram"
 )
 
@@ -21,7 +22,7 @@ func main() {
 	}
 	log.Printf("Authorized as %s", tg.Self.UserName)
 
-	var oa *openai.Client
+	var oa openaiutil.AIClient
 	if k := os.Getenv("OPENAI_API_KEY"); k != "" {
 		oa = openai.NewClient(k)
 	}
