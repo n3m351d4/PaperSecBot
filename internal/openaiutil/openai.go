@@ -38,9 +38,9 @@ const (
 	systemPrompt          = "Ты Russian security-аналитик. Ответ JSON minified безбэктиков. Ключи: Severity, Name, CVSSScore, CVSSVector, Assets, ShortDesc, ScreenshotHints, Remediation. Severity на английском. ShortDesc — техническое описание на русском с PoC и влиянием. ScreenshotHints — русские подсказки какие скриншоты/артефакты/POC приложить. Remediation — детальные шаги с ссылками PortSwigger, Nessus и Acunetix (рус)."
 )
 
-// Report contains all fields needed for a vulnerability description
-// that will be sent back to the user. Each field corresponds to a
-// part of the Markdown template built by formatter.BuildMarkdown.
+// Report contains the vulnerability information extracted from the
+// description and returned by OpenAI. Each field maps to a section in
+// the formatted report produced by the formatter package.
 type Report struct {
 	Severity        string
 	Name            string
