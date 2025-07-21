@@ -34,6 +34,7 @@ go mod tidy
 # 3. Установите переменные окружения
 export TELEGRAM_BOT_TOKEN=<bot_token>
 export OPENAI_API_KEY=<optional_openai_key>
+export OPENAI_MODEL=gpt-4o  # или gpt-4o-mini
 
 # 4. Запустите
 go run .
@@ -41,10 +42,11 @@ go run .
 
 ## Переменные окружения
 
-| Переменная           | Обязательно | Описание                                                            |
-| -------------------- | ----------- | ------------------------------------------------------------------- |
-| `TELEGRAM_BOT_TOKEN` | ✅           | Токен Telegram-бота                                                 |
-| `OPENAI_API_KEY`     | ❌           | (опц.) Ключ OpenAI API (GPT-4o). Без него бот вернёт шаблон без обогащения |
+| Переменная | Обязательно | Описание |
+| ---------- | ----------- | -------------------------------------------- |
+| `TELEGRAM_BOT_TOKEN` | ✅ | Токен Telegram-бота |
+| `OPENAI_API_KEY` | ❌ | (опц.) Ключ OpenAI API (GPT-4o). Без него бот вернёт шаблон без обогащения |
+| `OPENAI_MODEL` | ❌ | (опц.) Имя модели OpenAI, например `gpt-4o` или `gpt-4o-mini` |
 
 Ключи OpenAI можно купить тут -> @gpt_keys_shop_bot
 

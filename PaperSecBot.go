@@ -31,6 +31,18 @@ type Report struct {
 	Remediation     string
 }
 
+// reportAI mirrors Report but allows numeric CVSSScore from OpenAI
+type reportAI struct {
+	Severity        string      `json:"Severity"`
+	Name            string      `json:"Name"`
+	CVSSScore       json.Number `json:"CVSSScore"`
+	CVSSVector      string      `json:"CVSSVector"`
+	Assets          string      `json:"Assets"`
+	ShortDesc       string      `json:"ShortDesc"`
+	ScreenshotHints string      `json:"ScreenshotHints"`
+	Remediation     string      `json:"Remediation"`
+}
+
 type Bot struct {
 	tg      *tgbotapi.BotAPI
 	oa      *openai.Client
@@ -124,8 +136,12 @@ func (b *Bot) extractFields(description string) (Report, error) {
 	systemPrompt := "Ты Russian security-аналитик. Ответ JSON minified без бэктиков. Ключи: Severity, Name, CVSSScore, CVSSVector, Assets, ShortDesc, ScreenshotHints, Remediation. Severity на английском. ShortDesc — техническое описание на русском с PoC и влиянием. ScreenshotHints — русские подсказки какие скриншоты/артефакты/POC приложить. Remediation — детальные шаги с ссылками PortSwigger, Nessus и Acunetix (рус)."
 	userPrompt := "Описание: " + description
 
+	model := os.Getenv("OPENAI_MODEL")
+	if model == "" {
+		model = openai.GPT4o
+	}
 	req := openai.ChatCompletionRequest{
-		Model:       "gpt-4o",
+		Model:       model,
 		Messages:    []openai.ChatCompletionMessage{{Role: "system", Content: systemPrompt}, {Role: "user", Content: userPrompt}},
 		Temperature: 0.2,
 		MaxTokens:   10000,
@@ -141,8 +157,33 @@ func (b *Bot) extractFields(description string) (Report, error) {
 		raw = m[1]
 	}
 
-	if err := json.Unmarshal([]byte(raw), &base); err != nil {
+	var ai reportAI
+	if err := json.Unmarshal([]byte(raw), &ai); err != nil {
 		return base, err
+	}
+	if ai.Severity != "" {
+		base.Severity = ai.Severity
+	}
+	if ai.Name != "" {
+		base.Name = ai.Name
+	}
+	if s := ai.CVSSScore.String(); s != "" {
+		base.CVSSScore = s
+	}
+	if ai.CVSSVector != "" {
+		base.CVSSVector = ai.CVSSVector
+	}
+	if ai.Assets != "" {
+		base.Assets = ai.Assets
+	}
+	if ai.ShortDesc != "" {
+		base.ShortDesc = ai.ShortDesc
+	}
+	if ai.ScreenshotHints != "" {
+		base.ScreenshotHints = ai.ScreenshotHints
+	}
+	if ai.Remediation != "" {
+		base.Remediation = ai.Remediation
 	}
 	if base.Assets == "" {
 		base.Assets = asset
