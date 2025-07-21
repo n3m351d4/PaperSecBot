@@ -3,6 +3,7 @@ package telegram
 import (
 	"context"
 	"errors"
+	"log"
 	"strings"
 	"sync"
 
@@ -134,5 +135,10 @@ func (b *Bot) HandleText(m *tgbotapi.Message) {
 func (b *Bot) send(chatID int64, text string) {
 	msg := tgbotapi.NewMessage(chatID, text)
 	msg.ParseMode = markdownMode
-	_, _ = b.TG.Send(msg)
+	if _, err := b.TG.Send(msg); err != nil {
+		log.Printf("telegram send failed: %v", err)
+		if _, err := b.TG.Send(msg); err != nil {
+			log.Printf("telegram send retry failed: %v", err)
+		}
+	}
 }
