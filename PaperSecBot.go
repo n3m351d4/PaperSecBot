@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -18,6 +19,8 @@ var (
 	codeBlockRE = regexp.MustCompile("(?s)```(?:json)?\\s*(.*?)```") // извлечение JSON
 	urlRE       = regexp.MustCompile(`https?://[\w.-]+`)             // первый URL
 )
+
+const defaultMaxTokens = 10000
 
 // Report описывает итоговую структуру отчёта
 type Report struct {
@@ -128,11 +131,19 @@ func (b *Bot) extractFields(description string) (Report, error) {
 	if model == "" {
 		model = openai.GPT4o
 	}
+
+	maxTokens := defaultMaxTokens
+	if v := os.Getenv("OPENAI_MAX_TOKENS"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			maxTokens = n
+		}
+	}
+
 	req := openai.ChatCompletionRequest{
 		Model:       model,
 		Messages:    []openai.ChatCompletionMessage{{Role: "system", Content: systemPrompt}, {Role: "user", Content: userPrompt}},
 		Temperature: 0.2,
-		MaxTokens:   10000,
+		MaxTokens:   maxTokens,
 	}
 
 	resp, err := b.oa.CreateChatCompletion(ctx, req)
