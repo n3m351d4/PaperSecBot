@@ -83,8 +83,8 @@ type Bot struct {
 
 // New creates a Bot from Telegram and OpenAI clients. Passing a nil OpenAI
 // client disables description enrichment.
-func New(tg *tgbotapi.BotAPI, oa openaiutil.AIClient) *Bot {
-	return &Bot{TelegramBot: tg, OpenAIClient: oa, Pending: newPendingChats()}
+func New(telegramBot *tgbotapi.BotAPI, openAIClient openaiutil.AIClient) *Bot {
+	return &Bot{TelegramBot: telegramBot, OpenAIClient: openAIClient, Pending: newPendingChats()}
 }
 
 // HandleCmd processes bot commands such as /start, /bug and /cancel. Any

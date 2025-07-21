@@ -16,32 +16,31 @@ func main() {
 	if token == "" {
 		log.Fatalln("TELEGRAM_BOT_TOKEN not set")
 	}
-	tg, err := tgbotapi.NewBotAPI(token)
+	telegramBot, err := tgbotapi.NewBotAPI(token)
 	if err != nil {
 		log.Fatalf("bot init: %v", err)
 	}
-	log.Printf("Authorized as %s", tg.Self.UserName)
+	log.Printf("Authorized as %s", telegramBot.Self.UserName)
 
-	var oa openaiutil.AIClient
+	var openAIClient openaiutil.AIClient
 	if k := os.Getenv("OPENAI_API_KEY"); k != "" {
-		oa = openai.NewClient(k)
+		openAIClient = openai.NewClient(k)
 	}
 
-	bot := telegram.New(tg, oa)
-	updates := tg.GetUpdatesChan(tgbotapi.UpdateConfig{Timeout: 60})
-	for u := range updates {
-		if u.Message == nil {
+	bot := telegram.New(telegramBot, openAIClient)
+	updates := telegramBot.GetUpdatesChan(tgbotapi.UpdateConfig{Timeout: 60})
+	for update := range updates {
+		if update.Message == nil {
 			continue
 		}
-		upd := u
-		go func() {
-			if upd.Message.IsCommand() {
-				log.Printf("command from %d: %s", upd.Message.Chat.ID, upd.Message.Text)
-				bot.HandleCmd(upd.Message)
+		go func(u tgbotapi.Update) {
+			if u.Message.IsCommand() {
+				log.Printf("command from %d: %s", u.Message.Chat.ID, u.Message.Text)
+				bot.HandleCmd(u.Message)
 			} else {
-				log.Printf("message from %d: %q", upd.Message.Chat.ID, upd.Message.Text)
-				bot.HandleText(upd.Message)
+				log.Printf("message from %d: %q", u.Message.Chat.ID, u.Message.Text)
+				bot.HandleText(u.Message)
 			}
-		}()
+		}(update)
 	}
 }
