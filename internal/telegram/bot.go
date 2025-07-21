@@ -68,19 +68,19 @@ func (p *pendingChats) Cancel(id int64) bool {
 }
 
 // Bot wraps a Telegram client and optionally an OpenAI client.
-// TG is the Telegram API client, OA may be nil when OpenAI integration is
-// disabled, and Pending tracks chats that are in the middle of describing a
-// bug.
+// TelegramBot is the Telegram API client, OpenAIClient may be nil when
+// OpenAI integration is disabled, and Pending tracks chats that are in the
+// middle of describing a bug.
 type Bot struct {
-	TG      *tgbotapi.BotAPI
-	OA      openaiutil.AIClient
-	Pending *pendingChats
+	TelegramBot  *tgbotapi.BotAPI
+	OpenAIClient openaiutil.AIClient
+	Pending      *pendingChats
 }
 
 // New creates a Bot from Telegram and OpenAI clients. Passing a nil OpenAI
 // client disables description enrichment.
 func New(tg *tgbotapi.BotAPI, oa openaiutil.AIClient) *Bot {
-	return &Bot{TG: tg, OA: oa, Pending: newPendingChats()}
+	return &Bot{TelegramBot: tg, OpenAIClient: oa, Pending: newPendingChats()}
 }
 
 // HandleCmd processes bot commands such as /start, /bug and /cancel. Any
@@ -121,7 +121,7 @@ func (b *Bot) HandleText(m *tgbotapi.Message) {
 	desc := strings.TrimSpace(m.Text)
 	b.Pending.Remove(m.Chat.ID)
 	log.Printf("calling OpenAI for chat %d", m.Chat.ID)
-	rep, err := openaiutil.ExtractFields(b.OA, desc)
+	rep, err := openaiutil.ExtractFields(b.OpenAIClient, desc)
 	if err == nil {
 		log.Printf("OpenAI success for chat %d", m.Chat.ID)
 	}
@@ -141,9 +141,9 @@ func (b *Bot) HandleText(m *tgbotapi.Message) {
 func (b *Bot) send(chatID int64, text string) {
 	msg := tgbotapi.NewMessage(chatID, text)
 	msg.ParseMode = markdownMode
-	if _, err := b.TG.Send(msg); err != nil {
+	if _, err := b.TelegramBot.Send(msg); err != nil {
 		log.Printf("telegram send failed: %v", err)
-		if _, err := b.TG.Send(msg); err != nil {
+		if _, err := b.TelegramBot.Send(msg); err != nil {
 			log.Printf("telegram send retry failed: %v", err)
 		}
 	}
