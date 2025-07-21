@@ -67,22 +67,18 @@ func (p *pendingChats) Cancel(id int64) bool {
 	return ok
 }
 
-// Bot represents a Telegram bot with an optional OpenAI backend.
-// TG is the Telegram API client, OA is the OpenAI client (may be nil),
-// and Pending tracks chats currently describing a bug.
-// Bot represents a Telegram bot with an optional OpenAI backend.
-// TG is the Telegram API client, OA is the OpenAI client (may be nil),
-// and Pending tracks chats currently describing a bug.
+// Bot wraps a Telegram client and optionally an OpenAI client.
+// TG is the Telegram API client, OA may be nil when OpenAI integration is
+// disabled, and Pending tracks chats that are in the middle of describing a
+// bug.
 type Bot struct {
 	TG      *tgbotapi.BotAPI
 	OA      openaiutil.AIClient
 	Pending *pendingChats
 }
 
-// New constructs a Bot instance from Telegram and OpenAI clients. The
-// OpenAI client can be nil to disable description enrichment.
-// New constructs a Bot instance from Telegram and OpenAI clients. The
-// OpenAI client can be nil to disable description enrichment.
+// New creates a Bot from Telegram and OpenAI clients. Passing a nil OpenAI
+// client disables description enrichment.
 func New(tg *tgbotapi.BotAPI, oa openaiutil.AIClient) *Bot {
 	return &Bot{TG: tg, OA: oa, Pending: newPendingChats()}
 }

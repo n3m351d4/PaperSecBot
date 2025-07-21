@@ -77,8 +77,6 @@ func ParseDomain(text string) string {
 	return placeholder
 }
 
-// BuildMarkdown formats the report into a Markdown block suitable for
-// sending back via Telegram.
 func escapeMarkdown(s string) string {
 	replacer := strings.NewReplacer(
 		"*", "\\*",
@@ -88,6 +86,8 @@ func escapeMarkdown(s string) string {
 	return replacer.Replace(s)
 }
 
+// BuildMarkdown formats the Report into a human readable Markdown block that
+// can be sent back to the user via Telegram.
 func BuildMarkdown(r Report) string {
 	val := func(s string) string {
 		if s == "" {
