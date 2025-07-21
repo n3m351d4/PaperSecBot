@@ -22,7 +22,24 @@ var (
 	urlRE       = regexp.MustCompile(`https?://[\w.-]+`)             // первый URL
 )
 
-const defaultMaxTokens = 10000
+const (
+	defaultMaxTokens      = 10000
+	defaultSeverity       = "High"
+	defaultName           = "Безопасность"
+	defaultCVSSScore      = "7.5"
+	defaultCVSSVector     = "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N"
+	defaultScreenshotHint = "Подсказки для скриншотов"
+	defaultRemediation    = "Рекомендации по исправлению"
+	placeholder           = "—"
+
+	startMessage   = "Привет! Используй /bug для начала работы."
+	bugPrompt      = "Пришлите краткое описание — адреса, суть бага, запросы из Burp и прочую информацию."
+	unknownCommand = "Неизвестная команда"
+	startBugFirst  = "Сначала /bug."
+	openaiTimeout  = "Время ожидания ответа от OpenAI истекло."
+	markdownMode   = "Markdown"
+	systemPrompt   = "Ты Russian security-аналитик. Ответ JSON minified без бэктиков. Ключи: Severity, Name, CVSSScore, CVSSVector, Assets, ShortDesc, ScreenshotHints, Remediation. Severity на английском. ShortDesc — техническое описание на русском с PoC и влиянием. ScreenshotHints — русские подсказки какие скриншоты/артефакты/POC приложить. Remediation — детальные шаги с ссылками PortSwigger, Nessus и Acunetix (рус)."
+)
 
 // Report описывает итоговую структуру отчёта
 type Report struct {
@@ -88,14 +105,14 @@ func main() {
 func (b *Bot) handleCmd(m *tgbotapi.Message) {
 	switch m.Command() {
 	case "start":
-		b.send(m.Chat.ID, "Привет! Используй /bug для начала работы.")
+		b.send(m.Chat.ID, startMessage)
 	case "bug":
 		b.mu.Lock()
 		b.pending[m.Chat.ID] = true
 		b.mu.Unlock()
-		b.send(m.Chat.ID, "Пришлите краткое описание — адреса, суть бага, запросы из Burp и прочую информацию.")
+		b.send(m.Chat.ID, bugPrompt)
 	default:
-		b.send(m.Chat.ID, "Неизвестная команда")
+		b.send(m.Chat.ID, unknownCommand)
 	}
 }
 
@@ -104,7 +121,7 @@ func (b *Bot) handleText(m *tgbotapi.Message) {
 	waiting := b.pending[m.Chat.ID]
 	b.mu.Unlock()
 	if !waiting {
-		b.send(m.Chat.ID, "Сначала /bug.")
+		b.send(m.Chat.ID, startBugFirst)
 		return
 	}
 	desc := strings.TrimSpace(m.Text)
@@ -115,7 +132,7 @@ func (b *Bot) handleText(m *tgbotapi.Message) {
 	rep, err := b.extractFields(desc)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) || strings.Contains(err.Error(), "deadline") {
-			b.send(m.Chat.ID, "Время ожидания ответа от OpenAI истекло.")
+			b.send(m.Chat.ID, openaiTimeout)
 		} else {
 			b.send(m.Chat.ID, "OpenAI error: "+err.Error())
 		}
@@ -127,14 +144,14 @@ func (b *Bot) handleText(m *tgbotapi.Message) {
 func (b *Bot) extractFields(description string) (Report, error) {
 	asset := parseDomain(description)
 	base := Report{
-		Severity:        "High",
-		Name:            "Безопасность",
-		CVSSScore:       "7.5",
-		CVSSVector:      "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N",
+		Severity:        defaultSeverity,
+		Name:            defaultName,
+		CVSSScore:       defaultCVSSScore,
+		CVSSVector:      defaultCVSSVector,
 		Assets:          asset,
 		ShortDesc:       description,
-		ScreenshotHints: "Подсказки для скриншотов",
-		Remediation:     "Рекомендации по исправлению",
+		ScreenshotHints: defaultScreenshotHint,
+		Remediation:     defaultRemediation,
 	}
 
 	if b.oa == nil {
@@ -143,7 +160,6 @@ func (b *Bot) extractFields(description string) (Report, error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	systemPrompt := "Ты Russian security-аналитик. Ответ JSON minified без бэктиков. Ключи: Severity, Name, CVSSScore, CVSSVector, Assets, ShortDesc, ScreenshotHints, Remediation. Severity на английском. ShortDesc — техническое описание на русском с PoC и влиянием. ScreenshotHints — русские подсказки какие скриншоты/артефакты/POC приложить. Remediation — детальные шаги с ссылками PortSwigger, Nessus и Acunetix (рус)."
 	userPrompt := "Описание: " + description
 
 	model := os.Getenv("OPENAI_MODEL")
@@ -215,13 +231,13 @@ func parseDomain(text string) string {
 			return u.Host
 		}
 	}
-	return "—"
+	return placeholder
 }
 
 func buildMarkdown(r Report) string {
 	val := func(s string) string {
 		if s == "" {
-			return "—"
+			return placeholder
 		}
 		return s
 	}
@@ -241,6 +257,6 @@ func buildMarkdown(r Report) string {
 
 func (b *Bot) send(chatID int64, text string) {
 	msg := tgbotapi.NewMessage(chatID, text)
-	msg.ParseMode = "Markdown"
+	msg.ParseMode = markdownMode
 	_, _ = b.tg.Send(msg)
 }
