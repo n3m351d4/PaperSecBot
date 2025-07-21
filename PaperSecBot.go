@@ -48,11 +48,50 @@ type reportAI struct {
 	Remediation     string      `json:"Remediation"`
 }
 
+// pendingChats tracks chats waiting for a bug description.
+type pendingChats struct {
+	mu    sync.Mutex
+	chats map[int64]struct{}
+}
+
+func newPendingChats() *pendingChats {
+	return &pendingChats{chats: make(map[int64]struct{})}
+}
+
+func (p *pendingChats) Add(id int64) {
+	p.mu.Lock()
+	p.chats[id] = struct{}{}
+	p.mu.Unlock()
+}
+
+func (p *pendingChats) Remove(id int64) {
+	p.mu.Lock()
+	delete(p.chats, id)
+	p.mu.Unlock()
+}
+
+func (p *pendingChats) Has(id int64) bool {
+	p.mu.Lock()
+	_, ok := p.chats[id]
+	p.mu.Unlock()
+	return ok
+}
+
+// Cancel removes the chat from pending state and reports whether it was pending.
+func (p *pendingChats) Cancel(id int64) bool {
+	p.mu.Lock()
+	_, ok := p.chats[id]
+	if ok {
+		delete(p.chats, id)
+	}
+	p.mu.Unlock()
+	return ok
+}
+
 type Bot struct {
 	tg      *tgbotapi.BotAPI
 	oa      *openai.Client
-	pending map[int64]bool
-	mu      sync.Mutex
+	pending *pendingChats
 }
 
 func main() {
@@ -71,7 +110,7 @@ func main() {
 		oa = openai.NewClient(k)
 	}
 
-	bot := &Bot{tg: tg, oa: oa, pending: make(map[int64]bool)}
+	bot := &Bot{tg: tg, oa: oa, pending: newPendingChats()}
 	updates := tg.GetUpdatesChan(tgbotapi.UpdateConfig{Timeout: 60})
 	for u := range updates {
 		if u.Message == nil {
@@ -90,27 +129,30 @@ func (b *Bot) handleCmd(m *tgbotapi.Message) {
 	case "start":
 		b.send(m.Chat.ID, "Привет! Используй /bug для начала работы.")
 	case "bug":
-		b.mu.Lock()
-		b.pending[m.Chat.ID] = true
-		b.mu.Unlock()
+		if b.pending.Has(m.Chat.ID) {
+			b.send(m.Chat.ID, "Вы уже начали описание. Пришлите текст или /cancel.")
+			return
+		}
+		b.pending.Add(m.Chat.ID)
 		b.send(m.Chat.ID, "Пришлите краткое описание — адреса, суть бага, запросы из Burp и прочую информацию.")
+	case "cancel":
+		if b.pending.Cancel(m.Chat.ID) {
+			b.send(m.Chat.ID, "Отменено. Используйте /bug, чтобы начать заново.")
+		} else {
+			b.send(m.Chat.ID, "Нет активного запроса.")
+		}
 	default:
 		b.send(m.Chat.ID, "Неизвестная команда")
 	}
 }
 
 func (b *Bot) handleText(m *tgbotapi.Message) {
-	b.mu.Lock()
-	waiting := b.pending[m.Chat.ID]
-	b.mu.Unlock()
-	if !waiting {
+	if !b.pending.Has(m.Chat.ID) {
 		b.send(m.Chat.ID, "Сначала /bug.")
 		return
 	}
 	desc := strings.TrimSpace(m.Text)
-	b.mu.Lock()
-	delete(b.pending, m.Chat.ID)
-	b.mu.Unlock()
+	b.pending.Remove(m.Chat.ID)
 
 	rep, err := b.extractFields(desc)
 	if err != nil {
