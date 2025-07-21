@@ -3,12 +3,14 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log"
 	"net/url"
 	"os"
 	"regexp"
 	"strings"
 	"sync"
+	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	openai "github.com/sashabaranov/go-openai"
@@ -97,7 +99,11 @@ func (b *Bot) handleText(m *tgbotapi.Message) {
 
 	rep, err := b.extractFields(desc)
 	if err != nil {
-		b.send(m.Chat.ID, "OpenAI error: "+err.Error())
+		if errors.Is(err, context.DeadlineExceeded) || strings.Contains(err.Error(), "deadline") {
+			b.send(m.Chat.ID, "Время ожидания ответа от OpenAI истекло.")
+		} else {
+			b.send(m.Chat.ID, "OpenAI error: "+err.Error())
+		}
 		return
 	}
 	b.send(m.Chat.ID, buildMarkdown(rep))
@@ -120,7 +126,8 @@ func (b *Bot) extractFields(description string) (Report, error) {
 		return base, nil
 	}
 
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 	systemPrompt := "Ты Russian security-аналитик. Ответ JSON minified без бэктиков. Ключи: Severity, Name, CVSSScore, CVSSVector, Assets, ShortDesc, ScreenshotHints, Remediation. Severity на английском. ShortDesc — техническое описание на русском с PoC и влиянием. ScreenshotHints — русские подсказки какие скриншоты/артефакты/POC приложить. Remediation — детальные шаги с ссылками PortSwigger, Nessus и Acunetix (рус)."
 	userPrompt := "Описание: " + description
 
