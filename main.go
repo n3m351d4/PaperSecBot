@@ -36,8 +36,10 @@ func main() {
 		upd := u
 		go func() {
 			if upd.Message.IsCommand() {
+				log.Printf("command from %d: %s", upd.Message.Chat.ID, upd.Message.Text)
 				bot.HandleCmd(upd.Message)
 			} else {
+				log.Printf("message from %d: %q", upd.Message.Chat.ID, upd.Message.Text)
 				bot.HandleText(upd.Message)
 			}
 		}()

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/url"
 	"os"
 	"regexp"
@@ -132,10 +133,13 @@ func callOpenAI(ctx context.Context, c AIClient, description string) (reportAI, 
 		MaxTokens:   maxTokens,
 	}
 
+	log.Printf("OpenAI request model=%s", model)
 	resp, err := c.CreateChatCompletion(ctx, req)
 	if err != nil {
+		log.Printf("OpenAI request failed: %v", err)
 		return reportAI{}, fmt.Errorf("request failed: %w", err)
 	}
+	log.Printf("OpenAI response received")
 
 	raw := strings.TrimSpace(resp.Choices[0].Message.Content)
 	if m := codeBlockRE.FindStringSubmatch(raw); len(m) > 1 {
@@ -172,8 +176,13 @@ func ExtractFields(client AIClient, description string) (Report, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
+	log.Printf("sending description to OpenAI")
 	ai, err := callOpenAI(ctx, client, description)
+	if err == nil {
+		log.Printf("received OpenAI result")
+	}
 	if err != nil {
+		log.Printf("OpenAI processing error: %v", err)
 		return base, fmt.Errorf("openai: %w", err)
 	}
 	if ai.Severity != "" {
