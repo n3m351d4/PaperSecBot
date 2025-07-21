@@ -31,7 +31,9 @@ const (
 	systemPrompt          = "Ты Russian security-аналитик. Ответ JSON minified безбэктиков. Ключи: Severity, Name, CVSSScore, CVSSVector, Assets, ShortDesc, ScreenshotHints, Remediation. Severity на английском. ShortDesc — техническое описание на русском с PoC и влиянием. ScreenshotHints — русские подсказки какие скриншоты/артефакты/POC приложить. Remediation — детальные шаги с ссылками PortSwigger, Nessus и Acunetix (рус)."
 )
 
-// Report describes vulnerability report fields.
+// Report contains all fields needed for a vulnerability description
+// that will be sent back to the user. Each field corresponds to a
+// part of the Markdown template built in BuildMarkdown.
 type Report struct {
 	Severity        string
 	Name            string
@@ -56,7 +58,8 @@ type reportAI struct {
 	Remediation     string      `json:"Remediation"`
 }
 
-// ParseDomain extracts first domain from text or returns a placeholder.
+// ParseDomain extracts the first URL domain found in the provided text.
+// If no domain is present, a placeholder value is returned.
 func ParseDomain(text string) string {
 	if m := urlRE.FindString(text); m != "" {
 		if u, err := url.Parse(m); err == nil {
@@ -66,7 +69,8 @@ func ParseDomain(text string) string {
 	return placeholder
 }
 
-// BuildMarkdown returns a formatted message for Telegram.
+// BuildMarkdown formats the report into a Markdown block suitable for
+// sending back via Telegram.
 func BuildMarkdown(r Report) string {
 	val := func(s string) string {
 		if s == "" {
@@ -89,6 +93,7 @@ func BuildMarkdown(r Report) string {
 }
 
 // callOpenAI sends the description to OpenAI and decodes the JSON response.
+// It is used internally by ExtractFields.
 func callOpenAI(ctx context.Context, c *openai.Client, description string) (reportAI, error) {
 	userPrompt := "Описание: " + description
 
@@ -128,8 +133,9 @@ func callOpenAI(ctx context.Context, c *openai.Client, description string) (repo
 	return ai, nil
 }
 
-// ExtractFields talks to OpenAI and fills a Report using the provided description.
-// If client is nil no request is made and defaults are returned.
+// ExtractFields sends the bug description to OpenAI and fills a Report
+// with the parsed response. If the OpenAI client is nil, only default
+// values and the detected domain are returned.
 func ExtractFields(client *openai.Client, description string) (Report, error) {
 	asset := ParseDomain(description)
 	base := Report{
