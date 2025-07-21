@@ -105,5 +105,5 @@ go run .
 
 # Сборка бинаря
 go build -o papersecbot .
-
+```
 
