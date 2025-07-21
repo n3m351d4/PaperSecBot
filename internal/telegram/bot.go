@@ -21,26 +21,33 @@ const (
 	markdownMode   = "Markdown"
 )
 
-// pendingChats tracks chats waiting for a bug description.
+// pendingChats tracks chats waiting for a bug description and is
+// safe for concurrent access.
 type pendingChats struct {
 	mu    sync.Mutex
 	chats map[int64]struct{}
 }
 
-func newPendingChats() *pendingChats { return &pendingChats{chats: make(map[int64]struct{})} }
+// newPendingChats returns an initialized pendingChats value.
+func newPendingChats() *pendingChats {
+	return &pendingChats{chats: make(map[int64]struct{})}
+}
 
+// Add marks the specified chat as pending input.
 func (p *pendingChats) Add(id int64) {
 	p.mu.Lock()
 	p.chats[id] = struct{}{}
 	p.mu.Unlock()
 }
 
+// Remove deletes the chat from the pending list.
 func (p *pendingChats) Remove(id int64) {
 	p.mu.Lock()
 	delete(p.chats, id)
 	p.mu.Unlock()
 }
 
+// Has reports whether the chat is awaiting a description.
 func (p *pendingChats) Has(id int64) bool {
 	p.mu.Lock()
 	_, ok := p.chats[id]
@@ -48,6 +55,8 @@ func (p *pendingChats) Has(id int64) bool {
 	return ok
 }
 
+// Cancel removes the chat from the pending list and returns true
+// if it was present.
 func (p *pendingChats) Cancel(id int64) bool {
 	p.mu.Lock()
 	_, ok := p.chats[id]
@@ -58,17 +67,23 @@ func (p *pendingChats) Cancel(id int64) bool {
 	return ok
 }
 
-// Bot represents Telegram bot with OpenAI backend.
+// Bot represents a Telegram bot with an optional OpenAI backend.
+// TG is the Telegram API client, OA is the OpenAI client (may be nil),
+// and Pending tracks chats currently describing a bug.
 type Bot struct {
 	TG      *tgbotapi.BotAPI
 	OA      *openai.Client
 	Pending *pendingChats
 }
 
+// New constructs a Bot instance from Telegram and OpenAI clients. The
+// OpenAI client can be nil to disable description enrichment.
 func New(tg *tgbotapi.BotAPI, oa *openai.Client) *Bot {
 	return &Bot{TG: tg, OA: oa, Pending: newPendingChats()}
 }
 
+// HandleCmd processes bot commands such as /start, /bug and /cancel. Any
+// unknown command results in a generic error message.
 func (b *Bot) HandleCmd(m *tgbotapi.Message) {
 	switch m.Command() {
 	case "start":
@@ -91,6 +106,10 @@ func (b *Bot) HandleCmd(m *tgbotapi.Message) {
 	}
 }
 
+// HandleText expects a bug description from the user. The text is
+// optionally enriched using OpenAI and the result is sent back as
+// formatted Markdown. If the user did not start with /bug they are
+// reminded to do so.
 func (b *Bot) HandleText(m *tgbotapi.Message) {
 	if !b.Pending.Has(m.Chat.ID) {
 		b.send(m.Chat.ID, startBugFirst)
@@ -111,6 +130,7 @@ func (b *Bot) HandleText(m *tgbotapi.Message) {
 	b.send(m.Chat.ID, openaiutil.BuildMarkdown(rep))
 }
 
+// send wraps sending a Markdown-formatted message to Telegram.
 func (b *Bot) send(chatID int64, text string) {
 	msg := tgbotapi.NewMessage(chatID, text)
 	msg.ParseMode = markdownMode
