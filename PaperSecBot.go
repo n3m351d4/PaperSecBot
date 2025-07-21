@@ -138,7 +138,7 @@ func (b *Bot) extractFields(description string) (Report, error) {
 
 	model := os.Getenv("OPENAI_MODEL")
 	if model == "" {
-		model = openai.GPT4o
+		model = openai.GPT4oMini
 	}
 	req := openai.ChatCompletionRequest{
 		Model:       model,
