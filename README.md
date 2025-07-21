@@ -1,5 +1,5 @@
 # PaperSecBot
-Бот, который вам поможет писать отчет по пентостику
+Бот, который вам поможет писать отчет по пентесту
 
 **PaperSecBot** — минималистичный Telegram-бот на Go, который помогает пентестерам
 быстро оформлять отчёт об уязвимости. Бот принимает краткое текстовое описание бага,
@@ -27,8 +27,7 @@
 git clone https://github.com/n3m351d4/PaperSecBot
 cd PaperSecBot
 
-# 2. Инициализируйте go-модуль и подтяните зависимости
-go mod init papersecbot
+# 2. Подтяните зависимости
 go mod tidy
 
 # 3. Установите переменные окружения
@@ -91,7 +90,7 @@ go run .
 ## Архитектура
 
 ```
-Telegram → PaperSecBot.go → (опц.) OpenAI GPT-4o → Markdown-ответ
+Telegram → main.go → (опц.) OpenAI GPT-4o → Markdown-ответ
 ```
 
 * **tg-бот**: `github.com/go-telegram-bot-api/telegram-bot-api/v5`
