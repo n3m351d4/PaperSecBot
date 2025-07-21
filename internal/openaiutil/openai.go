@@ -35,13 +35,12 @@ const (
 	defaultCVSSVector     = "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N"
 	defaultScreenshotHint = "Подсказки для скриншотов"
 	defaultRemediation    = "Рекомендации по исправлению"
-	placeholder           = "—"
 	systemPrompt          = "Ты Russian security-аналитик. Ответ JSON minified безбэктиков. Ключи: Severity, Name, CVSSScore, CVSSVector, Assets, ShortDesc, ScreenshotHints, Remediation. Severity на английском. ShortDesc — техническое описание на русском с PoC и влиянием. ScreenshotHints — русские подсказки какие скриншоты/артефакты/POC приложить. Remediation — детальные шаги с ссылками PortSwigger, Nessus и Acunetix (рус)."
 )
 
 // Report contains all fields needed for a vulnerability description
 // that will be sent back to the user. Each field corresponds to a
-// part of the Markdown template built in BuildMarkdown.
+// part of the Markdown template built by formatter.BuildMarkdown.
 type Report struct {
 	Severity        string
 	Name            string
@@ -74,39 +73,7 @@ func ParseDomain(text string) string {
 			return u.Host
 		}
 	}
-	return placeholder
-}
-
-func escapeMarkdown(s string) string {
-	replacer := strings.NewReplacer(
-		"*", "\\*",
-		"_", "\\_",
-		"`", "\\`",
-	)
-	return replacer.Replace(s)
-}
-
-// BuildMarkdown formats the Report into a human readable Markdown block that
-// can be sent back to the user via Telegram.
-func BuildMarkdown(r Report) string {
-	val := func(s string) string {
-		if s == "" {
-			return placeholder
-		}
-		return escapeMarkdown(s)
-	}
-
-	var sb strings.Builder
-	cleanName := strings.TrimSpace(urlRE.ReplaceAllString(val(r.Name), ""))
-
-	sb.WriteString("**[" + val(r.Severity) + "] " + cleanName + "**\n")
-	sb.WriteString("**CVSS:** " + val(r.CVSSScore) + " (" + val(r.CVSSVector) + ")\n")
-	sb.WriteString("**Затронутые активы:** " + val(r.Assets) + "\n\n")
-	sb.WriteString("**Описание:**\n" + val(r.ShortDesc) + "\n\n")
-	sb.WriteString("*" + val(r.ScreenshotHints) + "*\n\n")
-	sb.WriteString("**Рекомендации:**\n" + val(r.Remediation) + "\n")
-
-	return sb.String()
+	return "—"
 }
 
 // callOpenAI sends the description to OpenAI and decodes the JSON response.

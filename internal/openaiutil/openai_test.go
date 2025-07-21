@@ -1,8 +1,11 @@
-package openaiutil
+package openaiutil_test
 
 import (
 	"strings"
 	"testing"
+
+	"papersecbot/internal/formatter"
+	openaiutil "papersecbot/internal/openaiutil"
 )
 
 func TestParseDomain(t *testing.T) {
@@ -12,19 +15,19 @@ func TestParseDomain(t *testing.T) {
 	}{
 		{"See https://example.com/path", "example.com"},
 		{"Multiple https://foo.com and http://bar.com", "foo.com"},
-		{"No url here", placeholder},
-		{"ftp://ftp.example.com", placeholder},
+		{"No url here", formatter.Placeholder},
+		{"ftp://ftp.example.com", formatter.Placeholder},
 		{"Text https://sub.domain.com/?q=1", "sub.domain.com"},
 	}
 	for i, tt := range tests {
-		if got := ParseDomain(tt.in); got != tt.want {
+		if got := openaiutil.ParseDomain(tt.in); got != tt.want {
 			t.Errorf("%d: ParseDomain(%q)=%q want %q", i, tt.in, got, tt.want)
 		}
 	}
 }
 
 func TestBuildMarkdown(t *testing.T) {
-	r := Report{
+	r := openaiutil.Report{
 		Severity:        "High",
 		Name:            "XSS at https://evil.com",
 		CVSSScore:       "7.5",
@@ -34,7 +37,7 @@ func TestBuildMarkdown(t *testing.T) {
 		ScreenshotHints: "Look at console",
 		Remediation:     "Escape < > &",
 	}
-	md := BuildMarkdown(r)
+	md := formatter.BuildMarkdown(r)
 	if strings.Contains(md, "https://evil.com") {
 		t.Errorf("url not stripped from name: %s", md)
 	}
@@ -44,14 +47,14 @@ func TestBuildMarkdown(t *testing.T) {
 }
 
 func TestBuildMarkdownEmpty(t *testing.T) {
-	r := Report{}
-	md := BuildMarkdown(r)
+	r := openaiutil.Report{}
+	md := formatter.BuildMarkdown(r)
 	for _, field := range []string{"**[", "CVSS:", "Затронутые активы:", "Описание:", "*", "Рекомендации:"} {
 		if !strings.Contains(md, field) {
 			t.Errorf("missing field marker %s", field)
 		}
 	}
-	if count := strings.Count(md, placeholder); count < 5 {
+	if count := strings.Count(md, formatter.Placeholder); count < 5 {
 		t.Errorf("expected placeholder inserted, got %d", count)
 	}
 }
