@@ -3,6 +3,7 @@ package openaiutil
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/url"
 	"os"
 	"regexp"
@@ -87,6 +88,46 @@ func BuildMarkdown(r Report) string {
 	return sb.String()
 }
 
+// callOpenAI sends the description to OpenAI and decodes the JSON response.
+func callOpenAI(ctx context.Context, c *openai.Client, description string) (reportAI, error) {
+	userPrompt := "Описание: " + description
+
+	model := os.Getenv("OPENAI_MODEL")
+	if model == "" {
+		model = openai.GPT4o
+	}
+
+	maxTokens := defaultMaxTokens
+	if v := os.Getenv("OPENAI_MAX_TOKENS"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			maxTokens = n
+		}
+	}
+
+	req := openai.ChatCompletionRequest{
+		Model:       model,
+		Messages:    []openai.ChatCompletionMessage{{Role: "system", Content: systemPrompt}, {Role: "user", Content: userPrompt}},
+		Temperature: 0.2,
+		MaxTokens:   maxTokens,
+	}
+
+	resp, err := c.CreateChatCompletion(ctx, req)
+	if err != nil {
+		return reportAI{}, fmt.Errorf("request failed: %w", err)
+	}
+
+	raw := strings.TrimSpace(resp.Choices[0].Message.Content)
+	if m := codeBlockRE.FindStringSubmatch(raw); len(m) > 1 {
+		raw = m[1]
+	}
+
+	var ai reportAI
+	if err := json.Unmarshal([]byte(raw), &ai); err != nil {
+		return reportAI{}, fmt.Errorf("invalid JSON: %w", err)
+	}
+	return ai, nil
+}
+
 // ExtractFields talks to OpenAI and fills a Report using the provided description.
 // If client is nil no request is made and defaults are returned.
 func ExtractFields(client *openai.Client, description string) (Report, error) {
@@ -109,40 +150,9 @@ func ExtractFields(client *openai.Client, description string) (Report, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	userPrompt := "Описание: " + description
-
-	model := os.Getenv("OPENAI_MODEL")
-	if model == "" {
-		model = openai.GPT4o
-	}
-
-	maxTokens := defaultMaxTokens
-	if v := os.Getenv("OPENAI_MAX_TOKENS"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil {
-			maxTokens = n
-		}
-	}
-
-	req := openai.ChatCompletionRequest{
-		Model:       model,
-		Messages:    []openai.ChatCompletionMessage{{Role: "system", Content: systemPrompt}, {Role: "user", Content: userPrompt}},
-		Temperature: 0.2,
-		MaxTokens:   maxTokens,
-	}
-
-	resp, err := client.CreateChatCompletion(ctx, req)
+	ai, err := callOpenAI(ctx, client, description)
 	if err != nil {
-		return base, err
-	}
-
-	raw := strings.TrimSpace(resp.Choices[0].Message.Content)
-	if m := codeBlockRE.FindStringSubmatch(raw); len(m) > 1 {
-		raw = m[1]
-	}
-
-	var ai reportAI
-	if err := json.Unmarshal([]byte(raw), &ai); err != nil {
-		return base, err
+		return base, fmt.Errorf("openai: %w", err)
 	}
 	if ai.Severity != "" {
 		base.Severity = ai.Severity
