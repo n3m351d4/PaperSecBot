@@ -9,6 +9,7 @@ import (
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 
+	"papersecbot/internal/formatter"
 	"papersecbot/internal/openaiutil"
 )
 
@@ -138,7 +139,7 @@ func (b *Bot) HandleText(m *tgbotapi.Message) {
 		}
 		return
 	}
-	b.send(m.Chat.ID, openaiutil.BuildMarkdown(rep))
+	b.send(m.Chat.ID, formatter.BuildMarkdown(rep))
 }
 
 // send wraps sending a Markdown-formatted message to Telegram.
