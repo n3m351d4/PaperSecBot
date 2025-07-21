@@ -8,7 +8,6 @@ import (
 	"sync"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	openai "github.com/sashabaranov/go-openai"
 
 	"papersecbot/internal/openaiutil"
 )
@@ -71,15 +70,20 @@ func (p *pendingChats) Cancel(id int64) bool {
 // Bot represents a Telegram bot with an optional OpenAI backend.
 // TG is the Telegram API client, OA is the OpenAI client (may be nil),
 // and Pending tracks chats currently describing a bug.
+// Bot represents a Telegram bot with an optional OpenAI backend.
+// TG is the Telegram API client, OA is the OpenAI client (may be nil),
+// and Pending tracks chats currently describing a bug.
 type Bot struct {
 	TG      *tgbotapi.BotAPI
-	OA      *openai.Client
+	OA      openaiutil.AIClient
 	Pending *pendingChats
 }
 
 // New constructs a Bot instance from Telegram and OpenAI clients. The
 // OpenAI client can be nil to disable description enrichment.
-func New(tg *tgbotapi.BotAPI, oa *openai.Client) *Bot {
+// New constructs a Bot instance from Telegram and OpenAI clients. The
+// OpenAI client can be nil to disable description enrichment.
+func New(tg *tgbotapi.BotAPI, oa openaiutil.AIClient) *Bot {
 	return &Bot{TG: tg, OA: oa, Pending: newPendingChats()}
 }
 

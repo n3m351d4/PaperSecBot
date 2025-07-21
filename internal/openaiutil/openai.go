@@ -14,6 +14,13 @@ import (
 	openai "github.com/sashabaranov/go-openai"
 )
 
+// AIClient is the interface implemented by types that can perform a
+// chat completion request. It is satisfied by *openai.Client and can be
+// mocked in tests.
+type AIClient interface {
+	CreateChatCompletion(ctx context.Context, req openai.ChatCompletionRequest) (openai.ChatCompletionResponse, error)
+}
+
 var (
 	codeBlockRE = regexp.MustCompile("(?s)```(?:json)?\\s*(.*?)```")
 	urlRE       = regexp.MustCompile(`https?://[\w.-]+`)
@@ -103,7 +110,7 @@ func BuildMarkdown(r Report) string {
 
 // callOpenAI sends the description to OpenAI and decodes the JSON response.
 // It is used internally by ExtractFields.
-func callOpenAI(ctx context.Context, c *openai.Client, description string) (reportAI, error) {
+func callOpenAI(ctx context.Context, c AIClient, description string) (reportAI, error) {
 	userPrompt := "Описание: " + description
 
 	model := os.Getenv("OPENAI_MODEL")
@@ -145,7 +152,7 @@ func callOpenAI(ctx context.Context, c *openai.Client, description string) (repo
 // ExtractFields sends the bug description to OpenAI and fills a Report
 // with the parsed response. If the OpenAI client is nil, only default
 // values and the detected domain are returned.
-func ExtractFields(client *openai.Client, description string) (Report, error) {
+func ExtractFields(client AIClient, description string) (Report, error) {
 	asset := ParseDomain(description)
 	base := Report{
 		Severity:        defaultSeverity,
