@@ -90,6 +90,7 @@ func New(tg *tgbotapi.BotAPI, oa openaiutil.AIClient) *Bot {
 // HandleCmd processes bot commands such as /start, /bug and /cancel. Any
 // unknown command results in a generic error message.
 func (b *Bot) HandleCmd(m *tgbotapi.Message) {
+	log.Printf("handle command %s from %d", m.Command(), m.Chat.ID)
 	switch m.Command() {
 	case "start":
 		b.send(m.Chat.ID, startMessage)
@@ -116,15 +117,20 @@ func (b *Bot) HandleCmd(m *tgbotapi.Message) {
 // formatted Markdown. If the user did not start with /bug they are
 // reminded to do so.
 func (b *Bot) HandleText(m *tgbotapi.Message) {
+	log.Printf("handle text from %d", m.Chat.ID)
 	if !b.Pending.Has(m.Chat.ID) {
 		b.send(m.Chat.ID, startBugFirst)
 		return
 	}
 	desc := strings.TrimSpace(m.Text)
 	b.Pending.Remove(m.Chat.ID)
-
+	log.Printf("calling OpenAI for chat %d", m.Chat.ID)
 	rep, err := openaiutil.ExtractFields(b.OA, desc)
+	if err == nil {
+		log.Printf("OpenAI success for chat %d", m.Chat.ID)
+	}
 	if err != nil {
+		log.Printf("OpenAI error for chat %d: %v", m.Chat.ID, err)
 		if errors.Is(err, context.DeadlineExceeded) || strings.Contains(err.Error(), "deadline") {
 			b.send(m.Chat.ID, openaiTimeout)
 		} else {
